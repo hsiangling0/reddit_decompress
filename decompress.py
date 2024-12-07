@@ -1,4 +1,4 @@
-import os
+import os, re
 import zstandard as zstd
 import csv, json, datetime
 from typing import Iterable
@@ -6,8 +6,8 @@ import pathlib
 import sys
 
 # FilePath = "submissions/"
-submission = ['post_id', 'subreddit', 'created_utc', 'title', 'selftext', 'post_url', 'score']
-comment = ['comment_id', 'post_id', 'subreddit', 'created_utc', 'body', 'score']
+submission = ['post_id', 'subreddit', 'post_title', 'post_content', 'post_score', 'post_create']
+comment = ['post_id', 'command_content', 'command_score', 'command_create']
 target_field = [[
     'politics', 'PoliticalDiscussion', 'unpopularopinion', 'Conservative', 'PoliticalHumor'
 ], [
@@ -17,6 +17,19 @@ target_field = [[
     'PremierLeague',
     'formula1',
 ], ['Economics', 'AskEconomics', 'inflation', 'economicCollapse', 'badeconomics']]
+
+
+def contextClear(s):
+    newS = ""
+    url_pattern = re.compile(r'(\[\S+\])?(\(?https?://\S+|www\.\S+\)?)|(/?r/\S+)|[\n]+|&\S+;',
+                             flags=re.MULTILINE)
+
+    if s not in {'', '[deleted]', '[removed]'}:
+        newS = url_pattern.sub('', s)
+    if re.search('[a-zA-Z]', newS):
+        return newS
+    else:
+        return ""
 
 
 def decode(reader, chunk_size, max_window_size, prev=None, byte=0):
@@ -86,22 +99,30 @@ def DataClean(file):
                         writer = writer_e
                     else:
                         continue
-                    if is_submission and item['selftext'] in {'', '[deleted]', '[removed]'}:
+                    s = item['selftext'] if is_submission else item['body']
+                    context = contextClear(s)
+                    if context == "":
                         continue
 
                     for element in attr:
-                        if element == 'created_utc':
+                        if element.endswith('content'):
+                            value = context
+                        elif element.endswith('create'):
                             value = datetime.datetime.fromtimestamp(int(
                                 item['created_utc'])).strftime("%Y-%m-%d")
-                        elif element == 'post_url':
-                            value = f"https://www.reddit.com{item['permalink']}"
+                        # elif element == 'post_url':
+                        #     value = f"https://www.reddit.com{item['permalink']}"
                         elif element == 'post_id':
                             if is_submission:
                                 value = item['id']
                             else:
                                 value = item['link_id'][3:]
-                        elif element == 'comment_id':
-                            value = item['id']
+                        elif element.endswith('score'):
+                            value = item['score']
+                        # elif element == 'comment_id':
+                        #     value = item['id']
+                        elif element == 'post_title':
+                            value = contextClear(item['title'])
                         else:
                             value = item[element]
                         output.append(str(value))
