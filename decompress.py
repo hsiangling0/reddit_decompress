@@ -7,7 +7,7 @@ import sys
 
 # FilePath = "submissions/"
 submission = ['post_id', 'subreddit', 'post_title', 'post_content', 'post_score', 'post_create']
-comment = ['post_id', 'command_content', 'command_score', 'command_create']
+comment = ['post_id', 'comment_content', 'comment_score', 'comment_create']
 target_field = [[
     'politics', 'PoliticalDiscussion', 'unpopularopinion', 'Conservative', 'PoliticalHumor'
 ], [
